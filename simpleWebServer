@@ -1,0 +1,101 @@
+import socket
+
+port = 18080
+host = ("localhost", port)
+
+HttpHtmlResponseHeader = ''' HTTP/1.1 200 OK
+Content-Type: text/html;charset = UTF-8
+
+'''
+HttpImgResponseHeader = '''HTTP / 1.1 200 OK
+Content-Type: image/jpg
+
+'''
+
+LineSeprator = "\r\n\r\n"
+
+HttpResponseBody = ""
+
+ServerScoket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+ServerScoket.bind(host)
+ServerScoket.listen(100)
+
+
+# 获取HTTP header
+def get_headers(request):
+    header_array = request.split("\r\n")
+    headers = {}
+    for header_item in header_array[1:]:
+        item_ = header_item.split(": ")
+        headers[item_[0]] = item_[1]
+    return headers
+
+
+# 获取rul查询字符串
+def get_get_args(request_url):
+    args_arr = request_url[request_url.find("?") + 1:].split("&")
+    get_args = {}
+    try:
+        for item in args_arr:
+            item_ = item.split("=")
+            get_args[item_[0]] = item_[1]
+        return get_args
+    except:
+        return {}
+
+
+# 获取POST表单参数
+def get_post_args(request_body):
+    post_args_arr = request_body.split("&")
+    post_args = {}
+    for item in post_args_arr:
+        item_ = item.split("=")
+        post_args[item_[0]] = item_[1]
+    return post_args
+
+
+while True:
+    HttpResponseBody = "Nice to meet U"
+    conn, client = ServerScoket.accept()
+    print("{} connected".format(client))
+    Request = conn.recv(1024).decode()
+    RequestText = Request.split(LineSeprator)
+    RequestHeader = RequestText[0]
+    # print(RequestHeader)
+    RequestBody = RequestText[1]
+    RequestMethod = RequestHeader.split(" ")[0]
+    RequestUrl = RequestHeader.split(" ")[1].split("?")[0]
+    RequestHeaders = get_headers(RequestHeader)
+    # print(RequestHeaders)
+    HttpResponseBody = ""
+    HttpResponse = "".encode()
+    if RequestMethod == "GET":
+        if RequestUrl[-1] == "/":
+            RequestUrl += "index.html"
+        if RequestUrl.split(".")[-1] == "html":
+            try:
+                res = open(r"C:\Users\win\PycharmProjects\zhou\venv\index.html", "rb")
+                StaticHtml = res.read()
+                HttpResponse += (HttpHtmlResponseHeader + "").encode()
+                HttpResponse += (HttpResponseBody.encode() + StaticHtml)
+                res.close()
+            except Exception:
+                print("exception happdend")
+                HttpResponse += HttpHtmlResponseHeader.encode()
+                HttpResponse += '<html><br>READ STATIC HTML FILE ERROR !<br></html>'.encode()
+        HttpResponse += '<br><br>The next is post test <br>'.encode()
+        HttpResponse += '''
+        <form action="/" method="post">
+        <p>Text1: <input type="text" name="Text1" /></p>
+        <p>Text2: <input type="text" name="Text2" /></p>
+        <input type="submit" value="Submit" />
+        </form>
+        '''.encode()
+    elif RequestMethod == "POST":
+        HttpResponseBody = "Your method is POST"
+    else:
+        HttpResponseBody = "Your method is unknown"
+    print(RequestUrl)
+    conn.sendall(HttpResponse)
+conn.close()
